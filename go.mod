@@ -1,4 +1,4 @@
-module github.com/zyedidia/sobox
+module github.com/UT-Security/sobox
 
 go 1.22.0
 

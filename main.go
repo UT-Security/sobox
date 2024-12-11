@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"debug/elf"
 	_ "embed"
 	"flag"
@@ -36,7 +37,9 @@ var includes string
 // Symbols inside the sandbox needed by libsobox
 var sbxsyms = []string{
 	"retfn",
-	"malloc",
+	"moz_arena_malloc",
+	"moz_arena_calloc",
+	"moz_arena_realloc",
 	"free",
 }
 
@@ -94,12 +97,7 @@ func genIncludes(filemap map[string]string, w io.Writer) {
 	})
 }
 
-func genTrampolines(syms []elf.Symbol, w io.Writer) {
-	var symnames []string
-	for _, sym := range syms {
-		symnames = append(symnames, sym.Name)
-	}
-
+func genTrampolines(symnames []string, w io.Writer) {
 	execTemplate(w, "trampolines", trampolines, map[string]any{
 		"syms":     symnames,
 		"nsyms":    len(symnames),
@@ -108,15 +106,58 @@ func genTrampolines(syms []elf.Symbol, w io.Writer) {
 	}, nil)
 }
 
-func genStub(syms []elf.Symbol, w io.Writer) {
-	var symnames []string
-	for _, sym := range syms {
-		symnames = append(symnames, sym.Name)
-	}
+func genStub(symnames []string, w io.Writer) {
 	execTemplate(w, "stub", stub, map[string]any{
 		"syms":    symnames,
 		"sbxsyms": sbxsyms,
 	}, nil)
+}
+
+func getSoExports(ef *elf.File) []string {
+	syms, err := ef.Symbols()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var exports []elf.Symbol
+	for _, sym := range syms {
+		if elf.ST_BIND(sym.Info) == elf.STB_GLOBAL && elf.ST_TYPE(sym.Info) == elf.STT_FUNC && sym.Section != elf.SHN_UNDEF {
+			if sym.Name == "_init" || sym.Name == "_fini" {
+				// Musl inserts these symbols on shared libraries, but after we
+				// compile the stub they will be linked internally, and should
+				// not be exported.
+				continue
+			}
+			exports = append(exports, sym)
+		}
+	}
+
+	var exportnames []string
+	for _, sym := range exports {
+		exportnames = append(exportnames, sym.Name)
+	}
+
+	return exportnames
+}
+
+func getFileExports(symFile string) []string {
+	f, err := os.Open(symFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanLines)
+
+	var exportnames []string
+
+	for scanner.Scan() {
+		exportnames = append(exportnames, scanner.Text())
+	}
+
+	return exportnames
 }
 
 func getname(solib string) string {
@@ -150,6 +191,8 @@ func main() {
 		objmap[parts[0]] = parts[1]
 		return nil
 	})
+	
+	symFileFlag := flag.String("s", "", "exported symbols file")
 
 	flag.Parse()
 	args := flag.Args()
@@ -166,24 +209,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	syms, err := ef.Symbols()
-	if err != nil {
-		log.Fatal(err)
-	}
+	symFile := *symFileFlag
 
-	var exports []elf.Symbol
-	for _, sym := range syms {
-		if elf.ST_BIND(sym.Info) == elf.STB_GLOBAL && elf.ST_TYPE(sym.Info) == elf.STT_FUNC && sym.Section != elf.SHN_UNDEF {
-			if sym.Name == "_init" || sym.Name == "_fini" {
-				// Musl inserts these symbols on shared libraries, but after we
-				// compile the stub they will be linked internally, and should
-				// not be exported.
-				continue
-			}
-			exports = append(exports, sym)
-		}
+	var exportnames []string
+	if symFile == "" {
+		exportnames = getSoExports(ef)
+	} else {
+		exportnames = getFileExports(symFile)
 	}
-
+	
 	gen := "gen"
 	os.MkdirAll(gen, os.ModePerm)
 
@@ -220,14 +254,14 @@ func main() {
 
 	lficc := getenv("LFICC", "x86_64-lfi-linux-musl-gcc")
 
-	genStub(exports, fstub)
+	genStub(exportnames, fstub)
 
-	genTrampolines(exports, ftrampolines)
+	genTrampolines(exportnames, ftrampolines)
 
 	fstub.Close()
 	ftrampolines.Close()
 
-	run(lficc, fstub.Name(), "-o", stubgen, "-L"+filepath.Dir(solib), "-l"+libname(solib))
+	run(lficc, fstub.Name(), "-o", stubgen, "-L"+filepath.Dir(solib), "-l"+libname(solib), "-lstdc++")
 	run("patchelf", "--set-interpreter", "ld-musl-x86_64.so.1", stubgen)
 	objmap["stub"] = stubgen
 
@@ -257,12 +291,12 @@ func main() {
 
 	fincludes.Close()
 
-	cc := getenv("CC", "gcc")
+	//cc := getenv("CC", "gcc")
 
 	out := *outflag
 	if out == "" {
 		out = getname(solib) + ".box.so"
 	}
 
-	run(cc, fincludes.Name(), ftrampolines.Name(), flibinit.Name(), fcbtramp.Name(), "-llfix", "-shared", "-O2", "-fPIC", "-o", out)
+	//run(cc, fincludes.Name(), ftrampolines.Name(), flibinit.Name(), fcbtramp.Name(), "-I/home/abhishekcs/workspace/lfi-toolchains/lfi-repo-syscalls/lfi-toolchain/include", "-L/home/abhishekcs/workspace/lfi-toolchains/lfi-repo-syscalls/lfi-toolchain/lib/x86_64-linux-gnu/", "-llfix", "-shared", "-O2", "-fPIC", "-o", out)
 }

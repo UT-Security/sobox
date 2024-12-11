@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include <syscall.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -21,6 +22,10 @@ struct File {
     uint8_t* start;
     uint8_t* end;
 };
+
+static inline int memfd_create(const char* name, unsigned int flags) {
+    return syscall(__NR_memfd_create, name, flags);
+}
 
 static bool cbinit(LFIProc* proc);
 
@@ -66,8 +71,7 @@ readfile(const char* filename, uint8_t** data, size_t* size)
 
 static LFIXEngine engine;
 
-__attribute__((constructor)) void
-sbx_init(void)
+void sbx_init(void)
 {
     bool b = lfix_init(&engine);
     if (!b) {
