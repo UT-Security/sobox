@@ -5,14 +5,24 @@ sbx_cbtrampoline:
 	// Entrypoint for callbacks. Callback target is in %r10.
 	movq lfi_myproc@gottpoff(%rip), %r11
 	movq %fs:(%r11), %r11
-	xchg 0(%r11), %rsp
+
+	xchg 0(%r11), %rsp      // restore stack pointer
+	pushq %r12              // save r12 to use as temp
+	movq 0(%r11), %r12      // move current sandbox stack pointer to r12
+	pushq 16(%r11)          // push old sandbox stack pointer to stack
+	movq %r12, 16(%r11)     // save current sandbox stack pointer
 
 	callq *%r10
 
 	// restore %rsp
 	movq lfi_myproc@gottpoff(%rip), %r11
 	movq %fs:(%r11), %r11
-	xchg 0(%r11), %rsp
+
+	movq 16(%r11), %r10      // move current sandbox stack pointer to r10
+	popq 16(%r11)            // restore old sandbox stack pointer
+	popq %r12                // restore r12
+	movq %rsp, 0(%r11)       // make sure we don't clobber stack pointer
+	movq %r10, %rsp          // restore stack pointer
 
 	// return back to sandbox
 
@@ -20,6 +30,7 @@ sbx_cbtrampoline:
 userpop:
 	popq %r11
 	// TODO: different sequence for large sandboxes is needed
-	andl $0xffffffe0, %r11d
+	//andl $0xffffffe0, %r11d
+	andl $0xffffffff, %r11d
 	orq %r14, %r11
 	jmpq *%r11
