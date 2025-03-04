@@ -12,7 +12,15 @@
 	movq %r12, 16(%r11)     // save current sandbox stack pointer
 
 	pushq %rdi // align stack
+	pushq 32(%r12)
+	pushq 24(%r12)
+	pushq 16(%r12)
+	pushq 8(%r12)
 	callq *%r10
+	popq %r11
+	popq %r11
+	popq %r11
+	popq %r11
 	popq %rdi
 
 	// restore %rsp
@@ -31,6 +39,6 @@
 userpop:
 	popq %r11
 	// TODO: different sequence for large sandboxes is needed
-	andl $0xffffffe0, %r11d
+	andl $0xffffffff, %r11d
 	orq %r14, %r11
 	jmpq *%r11

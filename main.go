@@ -114,7 +114,7 @@ func main() {
 	} else {
 		fatal("expected *.a or *.so file, got", lib)
 	}
-	log.Println("exports:", exports)
+	log.Println("exports:", len(exports))
 
 	if *showExports {
 		for _, s := range exports {
@@ -123,6 +123,7 @@ func main() {
 		os.Exit(0)
 	}
 
+	fmt.Println(*libname)
 	if *libname == "" {
 		base := filepath.Base(lib)
 		*libname = strings.TrimSuffix(base, filepath.Ext(base)) + "_box"
@@ -160,9 +161,9 @@ func main() {
 
 	WriteFiles(dir, *libname, "embed/lib", exports, exposed, objmap)
 
-	if static {
-		CompileStaticLib(dir, *out)
-	} else {
-		CompileDynamicLib(dir, *out)
-	}
+	//if filepath.Ext(lib) == ".so" {
+	//	CompileDynamicLib(dir, *out)
+	//} else {
+	//	CompileStaticLib(dir, *out)
+	//}
 }

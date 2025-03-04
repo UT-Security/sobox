@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/erikgeiser/ar"
+	demangle "github.com/ianlancetaylor/demangle"
 )
 
 var exposed = []string{
@@ -16,13 +18,23 @@ var exposed = []string{
 	"_lfi_pause",
 	"_lfi_thread_create",
 	"_lfi_thread_destroy",
-	"malloc",
-	"calloc",
+	"moz_arena_malloc",
+	"moz_arena_calloc",
+	"moz_arena_realloc",
 	"free",
 }
 
 func IsExport(sym string, exports map[string]bool) bool {
-	return len(exports) > 0 && exports[sym] || len(exports) == 0
+	dsym := demangle.Filter(sym)
+	_, after, found := strings.Cut(dsym, " ")
+
+	if strings.HasPrefix(dsym, "js::") || strings.HasPrefix(dsym, "JS::") || strings.HasPrefix(dsym, "JS_") || strings.Contains(dsym, "ProfilingStack") || strings.Contains(dsym, "JSStructuredCloneData") || strings.Contains(dsym, "JSAutoRealm") || strings.Contains(dsym, "JSAutoStructuredCloneBuffer") || strings.Contains(dsym, "JSErrorReport") || strings.Contains(dsym, "JSErrorNotes") || strings.Contains(dsym, "JSAutoNullableRealm") || strings.Contains(dsym, "JSPrincipalsWithOps") {
+		return true
+	} else if found && (strings.HasPrefix(after, "js::") || strings.HasPrefix(after, "JS::") || strings.HasPrefix(after, "JS_")) {
+		return true
+	}
+
+	return false
 }
 
 func ObjGetExports(file *elf.File, es map[string]bool) []string {
@@ -32,7 +44,7 @@ func ObjGetExports(file *elf.File, es map[string]bool) []string {
 	}
 	var exports []string
 	for _, sym := range syms {
-		if IsExport(sym.Name, es) && (elf.ST_BIND(sym.Info) == elf.STB_GLOBAL && elf.ST_TYPE(sym.Info) == elf.STT_FUNC && sym.Section != elf.SHN_UNDEF) {
+		if IsExport(sym.Name, es) && ((elf.ST_BIND(sym.Info) == elf.STB_GLOBAL || elf.ST_BIND(sym.Info) == elf.STB_WEAK) && elf.ST_TYPE(sym.Info) == elf.STT_FUNC && sym.Section != elf.SHN_UNDEF) {
 			if sym.Name == "_init" || sym.Name == "_fini" {
 				// Musl inserts these symbols on shared libraries, but after we
 				// compile the stub they will be linked internally, and should

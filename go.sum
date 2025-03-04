@@ -1,4 +1,6 @@
 github.com/erikgeiser/ar v0.0.0-20230310200753-fb6b8bb217f0 h1:wWOCmhGp5ebnKGv779HmTr0EuegedsCR/egFpyV3b1w=
 github.com/erikgeiser/ar v0.0.0-20230310200753-fb6b8bb217f0/go.mod h1:s9xUpVWR70g0mg48YTzgzRG1h7HwzvxTOjPXcww052Y=
+github.com/ianlancetaylor/demangle v0.0.0-20240912202439-0a2b6291aafd h1:EVX1s+XNss9jkRW9K6XGJn2jL2lB1h5H804oKPsxOec=
+github.com/ianlancetaylor/demangle v0.0.0-20240912202439-0a2b6291aafd/go.mod h1:gx7rwoVhcfuVKG5uya9Hs3Sxj7EIvldVofAWIUtGouw=
 golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c h1:KL/ZBHXgKGVmuZBZ01Lt57yE5ws8ZPSkkihmEyq7FXc=
 golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c/go.mod h1:tujkw807nyEEAamNbDrEGzRav+ilXA7PCRAd6xsmwiU=

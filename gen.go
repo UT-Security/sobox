@@ -46,7 +46,7 @@ func GenFile(path string, lib string, exported, exposed []string, filemap map[st
 	sort.Strings(files)
 
 	ExecTemplate(w, path, ReadEmbed(path), map[string]any{
-		"lib":       LibName(lib),
+		"lib":       lib,
 		"exported":  exported,
 		"exposed":   exposed,
 		"files":     files,

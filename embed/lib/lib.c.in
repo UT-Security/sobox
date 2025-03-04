@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <syscall.h>
 
 #include "lfi.h"
 #include "lfi_tux.h"
@@ -26,6 +27,10 @@ struct File {
     struct FileData* data;
     FILE* file;
 };
+
+static inline int memfd_create(const char* name, unsigned int flags) {
+    return syscall(__NR_memfd_create, name, flags);
+}
 
 static bool cbinit(struct LFIContext* ctx);
 
@@ -175,7 +180,7 @@ struct LFIContext*
     return lfi_myctx;
 }
 
-#define MAXCALLBACKS 4096
+#define MAXCALLBACKS 40960
 
 static void* callbacks[MAXCALLBACKS];
 
