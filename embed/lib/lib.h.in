@@ -4,6 +4,8 @@
 
 #include "lfi.h"
 
+extern "C" void {{ .lib }}_init();
+
 // {{ .lib }}_malloc allocates a heap object of size 'n' inside the sandbox.
 //
 // TODO: make sure sbx_malloc returns a pointer inside the sandbox.

@@ -187,10 +187,22 @@ static void* callbacks[MAXCALLBACKS];
 static ssize_t
 cbfreeslot()
 {
-    for (ssize_t i = 0; i < MAXCALLBACKS; i++) {
-        if (!callbacks[i])
+    static ssize_t index = 0;
+    for (ssize_t i = index; i < MAXCALLBACKS; i++) {
+        if (!callbacks[i]) {
+            index = (i + 1) % MAXCALLBACKS;
             return i;
+        }
     }
+
+    for (ssize_t i = 0; i < index; i++) {
+        if (!callbacks[i]) {
+            index = (i + 1) % MAXCALLBACKS;
+            return i;
+        }
+    }
+
+    index = 0;
     return -1;
 }
 

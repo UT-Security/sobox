@@ -52,14 +52,9 @@ void*
 {{ .lib }}_register_cb(void* fn, size_t stackframe)
 {
     assert(fn);
-    //assert(cbfind(fn) == -1 && "fn is already registered as a callback");
+    assert(cbfind(fn) == -1 && "fn is already registered as a callback");
 
-    ssize_t slot = cbfind(fn);
-    if (slot != -1) {
-        return &cbentries_box[slot].code[0];
-    }
-
-    slot = cbfreeslot();
+    ssize_t slot = cbfreeslot();
     if (slot == -1)
         return NULL;
 

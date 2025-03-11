@@ -17,10 +17,7 @@
 	pushq 16(%r12)
 	pushq 8(%r12)
 	callq *%r10
-	popq %r11
-	popq %r11
-	popq %r11
-	popq %r11
+	addq $0x20, %rsp
 	popq %rdi
 
 	// restore %rsp
@@ -39,6 +36,6 @@
 userpop:
 	popq %r11
 	// TODO: different sequence for large sandboxes is needed
-	andl $0xffffffff, %r11d
+	andq %r15, %r11
 	orq %r14, %r11
 	jmpq *%r11
